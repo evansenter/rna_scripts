@@ -24,10 +24,22 @@ module Rnabor
       @table     = generate_table
     end
 
-    def match_pairs(structure = structure)
-      structure = " " + structure unless structure[0] == " "
+    def match_pairs(structure_to_match = structure)
+      structure_to_match = " " + structure_to_match unless structure_to_match[0] == " "
       
-      (@match_pairs ||= {})[structure] ||= structure.split(//).each_with_index.inject({}) do |hash, (symbol, index)|
+      if structure_to_match.length > 2
+        if structure_to_match == structure
+          @paired_structure ||= get_pairings(structure)
+        else
+          get_pairings(structure_to_match)
+        end
+      else
+        {}
+      end
+    end
+    
+    def get_pairings(structure)
+      structure.split(//).each_with_index.inject({}) do |hash, (symbol, index)|
         hash.tap do      
           case symbol
           when "(" then hash[index] = nil
@@ -54,9 +66,7 @@ module Rnabor
         [x_value, solve_recurrences(x_value)]
       end
       
-      z_values = Lagrange.new(*data).coefficients
-      
-      (->(sum) { z_values.map { |z_value| z_value / sum } })[z_values.inject { |a, b| a + b }]
+      Lagrange.new(*data).coefficients
     end
 
     def solve_recurrences(x_value)
@@ -101,5 +111,5 @@ module Rnabor
   end
 end
 
-# rna = Rnabor::Nussinov.new("auacgccguaguau", "..(((...).))..")
-# rna.partition_function
+rna = Rnabor::Nussinov.new("acgccguaguacgccguagu", "(((...).))(((...).))")
+rna.partition_function
