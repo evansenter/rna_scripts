@@ -23,8 +23,13 @@ module Rnabor
     end
     
     def partition_function
-      data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
       # data = (0..length).map { |i| i }.map do |x_value|
+      #   [x_value, solve_recurrences(x_value)]
+      # end
+      # 
+      # p Lagrange.new(*data).coefficients
+      
+      data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
         [x_value, solve_recurrences(x_value)]
       end
       
@@ -39,7 +44,7 @@ module Rnabor
           j = i + base_pair_distance
           
           j_unpaired_contribution = table_at(i, j - 1) * x_value ** (base_paired_in?(j, i, j) ? 1 : 0)
-          j_paired_contribution   = (i...(j - MIN_LOOP_SIZE)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
+          j_paired_contribution   = (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
             i_j_pairs                  = count_pairs(match_pairs(structure[i..j]))
             upstream_partition_pairs   = count_pairs(match_pairs(structure[i..(k - 1)]))
             downstream_partition_pairs = count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
@@ -105,9 +110,11 @@ module Rnabor
     end
     
     def flush_table
+      # This is all messed up.
+      
       (1..length).each do |i|
         (1..length).each do |j|
-          table_at(i, j, j >= i + MIN_LOOP_SIZE ? 1.0 : 0.0)
+          table_at(i, j, j - i <= MIN_LOOP_SIZE ? 1.0 : 0.0) # delta.c ln 104
         end
       end
     end
@@ -118,8 +125,8 @@ module Rnabor
   end
 end
 
-# rna = Rnabor::Nussinov.new(
-#   "acgccguaguacgccguagu", 
-#   "(((...).))(((...).))"
-# )
-# rna.partition_function
+rna = Rnabor::Nussinov.new(
+  "acgccguaguacgccguagu", 
+  "(((...).))(((...).))"
+)
+rna.partition_function
