@@ -8,6 +8,17 @@ class NussinovTest < Test::Unit::TestCase
     @rna.table.size.times { |i| @rna.table[i].length.times { |j| @rna.table[i][j] = rand(100) } }
   end
   
+  def test_match_pairs__no_pseudoknots
+    assert_equal({
+      nil => 1, 
+      2   => 9, 
+      3   => 4, 
+      5   => 8, 
+      6   => 7, 
+      10  => nil
+    }, @rna.match_pairs(")(()(()))("))
+  end
+  
   def test_match_pairs__with_global_structure
     rna = Rnabor::Nussinov.new("ggggccc", "((...))")
     
@@ -40,6 +51,26 @@ class NussinovTest < Test::Unit::TestCase
   def test_match_pairs__open_base_pairs_marked_as_nil
     assert_equal({ 1 => nil }, @rna.match_pairs("(."))
     assert_equal({ nil => 2 }, @rna.match_pairs(".)"))
+  end
+  
+  def test_base_paired_in
+    assert  Rnabor::Nussinov.new("ggggccc", "((...))").base_paired_in?(7, 1, 7)
+    assert !Rnabor::Nussinov.new("ggggccc", "((...))").base_paired_in?(7, 1, 6)
+    assert  Rnabor::Nussinov.new("ggggccc", "(((..))").base_paired_in?(6, 3, 7)
+    assert !Rnabor::Nussinov.new("ggggccc", "(((..))").base_paired_in?(7, 3, 7)
+    assert !Rnabor::Nussinov.new("ggggccc", "(((..))").base_paired_in?(7, 3, 6)
+  end
+  
+  def test_closed_pairs
+    assert_equal({
+      3 => 4,
+      5 => 6
+    }, @rna.closed_pairs({
+      1   => nil,
+      nil => 2,
+      3   => 4,
+      5   => 6
+    }))
   end
   
   def test_count_pairs

@@ -24,6 +24,7 @@ module Rnabor
     
     def partition_function
       data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
+      # data = (0..length).map { |i| i }.map do |x_value|
         [x_value, solve_recurrences(x_value)]
       end
       
@@ -37,8 +38,8 @@ module Rnabor
         (1..(length - base_pair_distance)).each do |i|
           j = i + base_pair_distance
           
-          j_unpaired_contribution = table_at(i, j - 1) * x_value ** (paired?(i, j) ? 1 : 0)
-          j_paired_contribution   = (i...j).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
+          j_unpaired_contribution = table_at(i, j - 1) * x_value ** (base_paired_in?(j, i, j) ? 1 : 0)
+          j_paired_contribution   = (i...(j - MIN_LOOP_SIZE)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
             i_j_pairs                  = count_pairs(match_pairs(structure[i..j]))
             upstream_partition_pairs   = count_pairs(match_pairs(structure[i..(k - 1)]))
             downstream_partition_pairs = count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
@@ -78,10 +79,18 @@ module Rnabor
         end
       end
     end
+    
+    def base_paired_in?(pair_index, i, j)
+      closed_pairs(match_pairs(structure[i..j])).values.flatten.compact.include?(pair_index - i + 1)
+    end
+
+    def closed_pairs(pair_hash)
+      pair_hash.reject { |key, value| key.nil? || value.nil? }
+    end
 
     def count_pairs(pair_hash)
-      pair_hash.reject { |key, value| key.nil? || value.nil? }.count
-    end
+      closed_pairs(pair_hash).count
+    end    
 
     def can_pair?(i, j)
       BASE_PAIRINGS[sequence[i]].include?(sequence[j])
@@ -109,5 +118,8 @@ module Rnabor
   end
 end
 
-# rna = Rnabor::Nussinov.new("acgccguaguacgccguagu", "(((...).))(((...).))")
+# rna = Rnabor::Nussinov.new(
+#   "acgccguaguacgccguagu", 
+#   "(((...).))(((...).))"
+# )
 # rna.partition_function
