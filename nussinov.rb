@@ -1,3 +1,4 @@
+require "awesome_print"
 require "../lagrange/lagrange.rb"
 
 module Rnabor
@@ -43,7 +44,7 @@ module Rnabor
             downstream_partition_pairs = count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
             base_pair_difference       = i_j_pairs - upstream_partition_pairs - downstream_partition_pairs + (paired?(k, j) ? -1 : 1)
             
-            BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
+            sum + BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
           end
           
           table_at(i, j, j_unpaired_contribution + j_paired_contribution)
