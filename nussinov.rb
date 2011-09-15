@@ -2,13 +2,10 @@ require "../lagrange/lagrange.rb"
 
 module Rnabor
   class Nussinov
-    AVOGADROS_NUMBER   = 6.0221415e23
-    BOLTZMANN_CONSTANT = 1.3806503e-23
-    BOLTZMANN_FACTOR   = BOLTZMANN_CONSTANT * AVOGADROS_NUMBER
-    TEMPERATURE        = 37
-    BASE_PAIR_ENERGY   = Math::E ** (-1 / (BOLTZMANN_FACTOR * TEMPERATURE))
-    MIN_LOOP_SIZE      = 3
-    BASE_PAIRINGS      = {
+    TEMPERATURE      = 37
+    BASE_PAIR_ENERGY = Math::E ** (-1 / (0.0019872370936902486 * (TEMPERATURE + 273.15) * 100)) # 0.01 * (kcal K) / mol
+    MIN_LOOP_SIZE    = 3
+    BASE_PAIRINGS    = {
       "a" => %w[u],
       "u" => %w[a g],
       "g" => %w[c u],
@@ -111,5 +108,5 @@ module Rnabor
   end
 end
 
-rna = Rnabor::Nussinov.new("acgccguaguacgccguagu", "(((...).))(((...).))")
-rna.partition_function
+# rna = Rnabor::Nussinov.new("acgccguaguacgccguagu", "(((...).))(((...).))")
+# rna.partition_function
