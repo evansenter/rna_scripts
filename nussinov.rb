@@ -50,7 +50,13 @@ module Rnabor
             downstream_partition_pairs = count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
             base_pair_difference       = i_j_pairs - upstream_partition_pairs - downstream_partition_pairs + (paired?(k, j) ? -1 : 1)
             
-            sum + BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
+            begin
+              sum + BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
+            rescue TypeError => error
+              p [[i - 1, k - 2], [k, j - 2]]
+              table.each(&method(:p))
+              raise error
+            end
           end
           
           table_at(i, j, j_unpaired_contribution + j_paired_contribution)
@@ -110,11 +116,9 @@ module Rnabor
     end
     
     def flush_table
-      # This is all messed up.
-      
       (1..length).each do |i|
         (1..length).each do |j|
-          table_at(i, j, j - i <= MIN_LOOP_SIZE ? 1.0 : 0.0) # delta.c ln 104
+          table_at(i, j, i <= j && j <= i + MIN_LOOP_SIZE ? 1.0 : nil) # delta.c ln 104
         end
       end
     end
@@ -125,8 +129,8 @@ module Rnabor
   end
 end
 
-rna = Rnabor::Nussinov.new(
-  "acgccguaguacgccguagu", 
-  "(((...).))(((...).))"
-)
-rna.partition_function
+# rna = Rnabor::Nussinov.new(
+#   "acgccguaguacgccguagu", 
+#   "(((...).))(((...).))"
+# )
+# rna.partition_function
