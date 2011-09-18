@@ -3,10 +3,11 @@ require "../lagrange/lagrange.rb"
 
 module Rnabor
   class Nussinov
-    TEMPERATURE      = 37
-    BASE_PAIR_ENERGY = Math::E ** (-1 / (0.0019872370936902486 * (TEMPERATURE + 273.15) * 100)) # 0.01 * (kcal K) / mol
-    MIN_LOOP_SIZE    = 3
-    BASE_PAIRINGS    = {
+    TEMPERATURE        = 37
+    BOLTZMANN_CONSTANT = 0.0019872370936902486 # kcal / mol / K
+    BASE_PAIR_ENERGY   = Math::E ** (-1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
+    MIN_LOOP_SIZE      = 3
+    BASE_PAIRINGS      = {
       "a" => %w[u],
       "u" => %w[a g],
       "g" => %w[c u],
@@ -44,19 +45,15 @@ module Rnabor
           j = i + base_pair_distance
           
           j_unpaired_contribution = table_at(i, j - 1) * x_value ** (base_paired_in?(j, i, j) ? 1 : 0)
-          j_paired_contribution   = (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
+          j_paired_contribution   = (i..(j - 1)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
             i_j_pairs                  = count_pairs(match_pairs(structure[i..j]))
-            upstream_partition_pairs   = count_pairs(match_pairs(structure[i..(k - 1)]))
-            downstream_partition_pairs = count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
+            upstream_partition_pairs   = k - 1 < i ? 0 : count_pairs(match_pairs(structure[i..(k - 1)]))
+            downstream_partition_pairs = k + 1 > j - 1 ? 0 : count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
             base_pair_difference       = i_j_pairs - upstream_partition_pairs - downstream_partition_pairs + (paired?(k, j) ? -1 : 1)
             
-            begin
-              sum + BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
-            rescue TypeError => error
-              p [[i - 1, k - 2], [k, j - 2]]
-              table.each(&method(:p))
-              raise error
-            end
+            # Addressing situations where we are dealing with (I think) 0 length sequences by returning 0.0
+            # sum + BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
+            sum + BASE_PAIR_ENERGY * (k - 1 < i ? 0.0 : table_at(i, k - 1)) * (k + 1 > j - 1 ? 0.0 : table_at(k + 1, j - 1)) * x_value ** base_pair_difference
           end
           
           table_at(i, j, j_unpaired_contribution + j_paired_contribution)
@@ -118,7 +115,7 @@ module Rnabor
     def flush_table
       (1..length).each do |i|
         (1..length).each do |j|
-          table_at(i, j, i <= j && j <= i + MIN_LOOP_SIZE ? 1.0 : nil) # delta.c ln 104
+          table_at(i, j, i <= j && j <= i + MIN_LOOP_SIZE ? 1.0 : nil)
         end
       end
     end
