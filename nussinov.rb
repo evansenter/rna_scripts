@@ -5,7 +5,7 @@ module Rnabor
   class Nussinov
     TEMPERATURE        = 37
     BOLTZMANN_CONSTANT = 0.0019872370936902486 # kcal / mol / K
-    BASE_PAIR_ENERGY   = Math::E ** (-1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
+    BASE_PAIR_ENERGY   = Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
     MIN_LOOP_SIZE      = 3
     BASE_PAIRINGS      = {
       "a" => %w[u],
@@ -24,15 +24,13 @@ module Rnabor
     end
     
     def partition_function
-      # data = (0..length).map { |i| i }.map do |x_value|
-      #   [x_value, solve_recurrences(x_value)]
-      # end
-      # 
-      # p Lagrange.new(*data).coefficients
-      
-      data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
+      data = (0..length).map { |i| i }.map do |x_value|
         [x_value, solve_recurrences(x_value)]
       end
+      
+      # data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
+      #   [x_value, solve_recurrences(x_value)]
+      # end
       
       Lagrange.new(*data).coefficients
     end
@@ -44,16 +42,14 @@ module Rnabor
         (1..(length - base_pair_distance)).each do |i|
           j = i + base_pair_distance
           
-          j_unpaired_contribution = table_at(i, j - 1) * x_value ** (base_paired_in?(j, i, j) ? 1 : 0)
-          j_paired_contribution   = (i..(j - 1)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
+          j_unpaired_contribution = table_at(i, j - 1) * x_value ** (end_base_paired?(i, j) ? 1 : 0)
+          j_paired_contribution   = (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
             i_j_pairs                  = count_pairs(match_pairs(structure[i..j]))
-            upstream_partition_pairs   = k - 1 < i ? 0 : count_pairs(match_pairs(structure[i..(k - 1)]))
-            downstream_partition_pairs = k + 1 > j - 1 ? 0 : count_pairs(match_pairs(structure[(k + 1)..(j - 1)]))
+            upstream_partition_pairs   = k - 1 < i ? 0 : pair_distance(structure[i..j], structure[i..(k - 1)])
+            downstream_partition_pairs = pair_distance(structure[i..j], structure[(k + 1)..(j - 1)])
             base_pair_difference       = i_j_pairs - upstream_partition_pairs - downstream_partition_pairs + (paired?(k, j) ? -1 : 1)
             
-            # Addressing situations where we are dealing with (I think) 0 length sequences by returning 0.0
-            # sum + BASE_PAIR_ENERGY * table_at(i, k - 1) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
-            sum + BASE_PAIR_ENERGY * (k - 1 < i ? 0.0 : table_at(i, k - 1)) * (k + 1 > j - 1 ? 0.0 : table_at(k + 1, j - 1)) * x_value ** base_pair_difference
+            sum + BASE_PAIR_ENERGY * (k - 1 < i ? 1.0 : table_at(i, k - 1)) * table_at(k + 1, j - 1) * x_value ** base_pair_difference
           end
           
           table_at(i, j, j_unpaired_contribution + j_paired_contribution)
@@ -61,6 +57,13 @@ module Rnabor
       end
       
       table_at(1, length)
+    end
+    
+    def pair_distance(structure_a, structure_b)
+      structure_a_pairings = closed_pairs(match_pairs(structure_a)).map(&:sort).to_set
+      structure_b_pairings = closed_pairs(match_pairs(structure_b)).map(&:sort).to_set
+      
+      ((structure_a_pairings - structure_b_pairings) + (structure_b_pairings - structure_a_pairings)).size
     end
 
     def match_pairs(structure_to_match = structure)
@@ -88,8 +91,8 @@ module Rnabor
       end
     end
     
-    def base_paired_in?(pair_index, i, j)
-      closed_pairs(match_pairs(structure[i..j])).values.flatten.compact.include?(pair_index - i + 1)
+    def end_base_paired?(i, j)
+      closed_pairs(match_pairs(structure[i..j])).values.compact.include?(j - i + 1)
     end
 
     def closed_pairs(pair_hash)
@@ -126,8 +129,8 @@ module Rnabor
   end
 end
 
-# rna = Rnabor::Nussinov.new(
-#   "acgccguaguacgccguagu", 
-#   "(((...).))(((...).))"
-# )
-# rna.partition_function
+rna = Rnabor::Nussinov.new(
+  "gggccc", 
+  "......"
+)
+rna.partition_function
