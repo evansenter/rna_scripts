@@ -86,7 +86,7 @@ module Rnabor
     end
 
     def can_pair?(i, j)
-       BASE_PAIRINGS[sequence[i]].include?(sequence[j])
+      BASE_PAIRINGS[sequence[i]].include?(sequence[j])
     end
 
     def generate_table
@@ -110,7 +110,7 @@ module Rnabor
 end
 
 rna = Rnabor::Neighbors.new(
-  "AUACGCCGUAGUAU",
-  "..(((...).)).."
+  "ggggcccc", 
+  "(.(...))"
 )
 rna.count_neighbors

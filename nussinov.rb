@@ -6,7 +6,7 @@ module Rnabor
   class Nussinov
     TEMPERATURE        = 37
     BOLTZMANN_CONSTANT = 0.0019872370936902486 # kcal / mol / K
-    BASE_PAIR_ENERGY   = 0 # Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
+    BASE_PAIR_ENERGY   = Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
     MIN_LOOP_SIZE      = 3
     BASE_PAIRINGS      = {
       "a" => %w[u],
@@ -24,14 +24,10 @@ module Rnabor
       @table     = generate_table
     end
     
-    def partition_function
-      data = (0..length).map { |i| i }.map do |x_value|
+    def partition_function      
+      data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
         [x_value, solve_recurrences(x_value)]
       end
-      
-      # data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
-      #   [x_value, solve_recurrences(x_value)]
-      # end
       
       Lagrange.new(*data).coefficients
     end
@@ -39,20 +35,25 @@ module Rnabor
     def solve_recurrences(x_value)
       flush_table
       
-      ((MIN_LOOP_SIZE + 1)..(length - 1)).each do |base_pair_distance|
-        (1..(length - base_pair_distance)).each do |i|
-          j = i + base_pair_distance
+      ((MIN_LOOP_SIZE + 1)..(length - 1)).each do |distance|
+        (1..(length - distance)).each do |i|
+          j = i + distance
+  
+          table[i][j] = table[i][j - 1] * x_value ** (end_base_paired?(i, j) ? 1 : 0)
           
-          j_unpaired_contribution = table_at(i, j - 1) * x_value ** (end_base_paired?(i, j) ? 1 : 0)
-          j_paired_contribution   = (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.inject(0.0) do |sum, k|
-            sum + BASE_PAIR_ENERGY * (k - 1 < i ? 1.0 : table_at(i, k - 1)) * table_at(k + 1, j - 1) * x_value ** pair_distance(i, k, j)
+          (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
+            base_pair_distance = pair_distance(i, k, j)
+            
+            if k == i
+              table[i][j] += table[k + 1][j - 1] * BASE_PAIR_ENERGY * x_value ** base_pair_distance
+            else
+              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * BASE_PAIR_ENERGY * x_value ** base_pair_distance
+            end
           end
-          
-          table_at(i, j, j_unpaired_contribution + j_paired_contribution)
         end
       end
       
-      table_at(1, length)
+      table[1][length]
     end
     
     def pair_distance(i, k, j)
@@ -67,12 +68,8 @@ module Rnabor
     def match_pairs(structure_to_match = structure)
       structure_to_match = " " + structure_to_match unless structure_to_match[0] == " "
       
-      if structure_to_match.length > 2
-        if structure_to_match == structure
-          @paired_structure ||= get_pairings(structure)
-        else
-          get_pairings(structure_to_match)
-        end
+      if structure_to_match.length >= MIN_LOOP_SIZE + 3 # Padded space + minimum loop size + base pair on either side of loop
+        get_pairings(structure_to_match)
       else
         {}
       end
@@ -83,7 +80,7 @@ module Rnabor
         hash.tap do      
           case symbol
           when "(" then hash[index] = nil
-          when ")" then hash[hash.select { |_, value| value.nil? }.keys.max] = index
+          when ")" then hash[hash.select { |from, to| to.nil? }.keys.max] = index
           end
         end
       end
@@ -97,10 +94,6 @@ module Rnabor
       pair_hash.reject { |key, value| key.nil? || value.nil? }
     end
 
-    def count_pairs(pair_hash)
-      closed_pairs(pair_hash).count
-    end    
-
     def can_pair?(i, j)
       BASE_PAIRINGS[sequence[i]].include?(sequence[j])
     end
@@ -110,19 +103,15 @@ module Rnabor
     end
 
     def generate_table
-      (0...length).map { Array.new(length) }
+      (0..length).map { Array.new(length + 1) }
     end
     
     def flush_table
       (1..length).each do |i|
-        (1..length).each do |j|
-          table_at(i, j, i <= j && j <= i + MIN_LOOP_SIZE ? 1.0 : nil)
+        (i..length).each do |j|
+          table[i][j] = 1.0 if j <= i + MIN_LOOP_SIZE
         end
       end
-    end
-    
-    def table_at(i, j, value = nil)
-      value.nil? ? table[i - 1][j - 1] : table[i - 1][j - 1] = value
     end
   end
 end
