@@ -20,34 +20,22 @@ module Rnabor
       @table     = generate_table
     end
 
-    def solve_recurrences
+    def count_neighbors
       flush_table
       
       (1..length).each do |delta|
-        p "DELTA #{delta}"
-        
         ((MIN_LOOP_SIZE + 1)..(length - 1)).each do |distance|
           (1..(length - distance)).each do |i|
             j = i + distance
-            
-            p ["position (i, j), end base paired?", i, j, end_base_paired?(i, j), table[delta - (end_base_paired?(i, j) ? 1 : 0)][i][j - 1]] if delta == 2
 
             table[delta][i][j] = table[delta - (end_base_paired?(i, j) ? 1 : 0)][i][j - 1]
             
             (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
-              p ["k, can pair?", k, can_pair?(k, j)] if delta == 2
-              
               base_pair_distance = pair_distance(i, k, j)
-              p ["pair distance #{structure[i..j]}, #{structure[i..(k - 1)]}[#{structure[(k + 1)..(j - 1)]})", base_pair_distance]
-              
               if k == i
-                p [delta, base_pair_distance, i, j, k]
-                
-                table[delta][i][j] += table[delta - base_pair_distance][k + 1][j - 1]
+                table[delta][i][j] += table[delta - base_pair_distance][k + 1][j - 1] || 0
               else
                 (0..(delta - base_pair_distance)).each do |upstream_distance|
-                  p ["upstream_distance", upstream_distance]
-
                   table[delta][i][j] += table[upstream_distance][i][k - 1] * table[delta - base_pair_distance - upstream_distance][k + 1][j - 1]
                 end
               end
@@ -122,9 +110,7 @@ module Rnabor
 end
 
 rna = Rnabor::Neighbors.new(
-  "GGGGCCC",
-  "......."
-  # "GGGGCCCC",
-  # "(.(...))"
+  "AUACGCCGUAGUAU",
+  "..(((...).)).."
 )
-rna.solve_recurrences
+rna.count_neighbors
