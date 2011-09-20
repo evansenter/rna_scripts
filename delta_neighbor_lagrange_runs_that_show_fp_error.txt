@@ -1,0 +1,294 @@
+There are 4 different structures below, for which we calculate the k-neighbors for 0 <= k <= n. Each structure is run four times. The first run is from the RNAbor server, and the second run is from my implementation of the recursions described in the RNAbor paper. The third and fourth runs use the Lagrange, with a different set of X values used to solve the recursions at a fixed point. The third dataset of each structure uses:
+  i = 0 to n: x[i] = 1.0 / (i + 1)
+  
+  ...and the fourth dataset of each structure uses:
+  i = 0 to n: x[i] = i
+  
+The x[i] = 1.0 / (i + 1) points are very volatile, as seen in the transition from gggggccccc to gggggcccccgggggccccc where the error rate explodes, while the x[i] = i points are more stable at the expense of generating huge partition number values.
+
+#RNAbor k-neighbor number of structures for rna  none
+
+# GGGCC
+# .....
+0	1
+1	1
+2	0
+3	0
+4	0
+5	0
+
+gggcc
+.....
+k = 0         neighbors = 1
+k = 1         neighbors = 1
+k = 2         neighbors = 0
+k = 3         neighbors = 0
+k = 4         neighbors = 0
+k = 5         neighbors = 0
+
+gggcc
+.....
+Ran in 0.001 seconds
+k = 0         neighbors = 1.0000000000000284
+k = 1         neighbors = 0.9999999999995453
+k = 2         neighbors = 5.4569682106375694e-12
+k = 3         neighbors = -7.275957614183426e-12
+k = 4         neighbors = 1.8189894035458565e-11
+k = 5         neighbors = -5.4569682106375694e-12
+
+gggcc
+.....
+Ran in 0.001 seconds
+k = 0         neighbors = 1.0
+k = 1         neighbors = 0.9999999999999991
+k = 2         neighbors = 1.7763568394002505e-15
+k = 3         neighbors = -3.552713678800501e-15
+k = 4         neighbors = 4.440892098500626e-16
+k = 5         neighbors = -1.3877787807814457e-17
+
+-----------------------------------------------------
+
+#RNAbor k-neighbor number of structures for rna  none
+
+# GGGGGCCCCC
+# ..........
+0	1
+1	19
+2	35
+3	7
+4	0
+5	0
+6	0
+7	0
+8	0
+
+gggggccccc
+..........
+k = 0         neighbors = 1
+k = 1         neighbors = 19
+k = 2         neighbors = 35
+k = 3         neighbors = 7
+k = 4         neighbors = 0
+k = 5         neighbors = 0
+k = 6         neighbors = 0
+k = 7         neighbors = 0
+k = 8         neighbors = 0
+k = 9         neighbors = 0
+k = 10        neighbors = 0
+
+gggggccccc
+..........
+Ran in 0.082 seconds
+k = 0         neighbors = 1.0000000001236913
+k = 1         neighbors = 18.999999995343387
+k = 2         neighbors = 35.00000010058284
+k = 3         neighbors = 6.9999988079071045
+k = 4         neighbors = 1.430511474609375e-05
+k = 5         neighbors = -0.0001068115234375
+k = 6         neighbors = 0.00030517578125
+k = 7         neighbors = -0.0010986328125
+k = 8         neighbors = 0.001220703125
+k = 9         neighbors = -0.001373291015625
+k = 10        neighbors = 0.0004119873046875
+
+gggggccccc
+..........
+Ran in 0.064 seconds
+k = 0         neighbors = 0.9999999999999999
+k = 1         neighbors = 19.000000000000227
+k = 2         neighbors = 34.99999999996135
+k = 3         neighbors = 6.999999999973625
+k = 4         neighbors = -1.8189894035458565e-12
+k = 5         neighbors = 7.275957614183426e-12
+k = 6         neighbors = -9.947598300641403e-13
+k = 7         neighbors = 2.913225216616411e-13
+k = 8         neighbors = -1.865174681370263e-14
+k = 9         neighbors = 1.4155343563970746e-15
+k = 10        neighbors = -6.071532165918825e-18
+
+-----------------------------------------------------
+
+#RNAbor k-neighbor number of structures for rna  none
+
+# GGGGGCCCCCGGGGGCCCCC
+# ....................
+0	1
+1	82
+2	1511
+3	7173
+4	11221
+5	6781
+6	1800
+7	212
+8	7
+9	0
+10	0
+11	0
+12	0
+13	0
+
+gggggcccccgggggccccc
+....................
+k = 0         neighbors = 1
+k = 1         neighbors = 82
+k = 2         neighbors = 1511
+k = 3         neighbors = 7173
+k = 4         neighbors = 11221
+k = 5         neighbors = 6781
+k = 6         neighbors = 1800
+k = 7         neighbors = 212
+k = 8         neighbors = 7
+k = 9         neighbors = 0
+k = 10        neighbors = 0
+k = 11        neighbors = 0
+k = 12        neighbors = 0
+k = 13        neighbors = 0
+k = 14        neighbors = 0
+k = 15        neighbors = 0
+k = 16        neighbors = 0
+k = 17        neighbors = 0
+k = 18        neighbors = 0
+k = 19        neighbors = 0
+k = 20        neighbors = 0
+
+gggggcccccgggggccccc
+....................
+Ran in 1.742 seconds
+k = 0         neighbors = 1.0000330209732056
+k = 1         neighbors = 81.99209594726562
+k = 2         neighbors = 1511.58203125
+k = 3         neighbors = 7176.0
+k = 4         neighbors = 11984.0
+k = 5         neighbors = 37888.0
+k = 6         neighbors = -1097728.0
+k = 7         neighbors = -31195136.0
+k = 8         neighbors = 85983232.0
+k = 9         neighbors = -184549376.0
+k = 10        neighbors = -19595788288.0
+k = 11        neighbors = -206158430208.0
+k = 12        neighbors = 3281355014144.0
+k = 13        neighbors = -2817498546176.0
+k = 14        neighbors = 27762668601344.0
+k = 15        neighbors = -285873023221760.0
+k = 16        neighbors = 354042744143872.0
+k = 17        neighbors = -782852278976512.0
+k = 18        neighbors = 217703302299648.0
+k = 19        neighbors = -163827232538624.0
+k = 20        neighbors = 61572651155456.0
+
+gggggcccccgggggccccc
+....................
+Ran in 1.722 seconds
+k = 0         neighbors = 1.0
+k = 1         neighbors = 82.02116775512695
+k = 2         neighbors = 1511.0315704345703
+k = 3         neighbors = 7173.04052734375
+k = 4         neighbors = 11220.938720703125
+k = 5         neighbors = 6780.994873046875
+k = 6         neighbors = 1800.0537414550781
+k = 7         neighbors = 212.00514030456543
+k = 8         neighbors = 6.998727321624756
+k = 9         neighbors = -0.0001512765884399414
+k = 10        neighbors = -5.748867988586426e-05
+k = 11        neighbors = 2.434477210044861e-06
+k = 12        neighbors = -6.961636245250702e-07
+k = 13        neighbors = 1.6298145055770874e-09
+k = 14        neighbors = 3.0831870390102267e-10
+k = 15        neighbors = -6.858158485556487e-11
+k = 16        neighbors = 7.460698725481052e-14
+k = 17        neighbors = -3.472222509515177e-14
+k = 18        neighbors = 1.1188966420050406e-15
+k = 19        neighbors = 1.6723818510588906e-17
+k = 20        neighbors = -8.713851444878615e-20
+
+-----------------------------------------------------
+
+#RNAbor k-neighbor number of structures for rna  none
+
+# CACUUCAACCGAUCGCGGAA
+# ....................
+0	1
+1	42
+2	309
+3	494
+4	167
+5	6
+6	0
+7	0
+8	0
+9	0
+10	0
+
+cacuucaaccgaucgcggaa
+....................
+k = 0         neighbors = 1
+k = 1         neighbors = 42
+k = 2         neighbors = 309
+k = 3         neighbors = 494
+k = 4         neighbors = 167
+k = 5         neighbors = 6
+k = 6         neighbors = 0
+k = 7         neighbors = 0
+k = 8         neighbors = 0
+k = 9         neighbors = 0
+k = 10        neighbors = 0
+k = 11        neighbors = 0
+k = 12        neighbors = 0
+k = 13        neighbors = 0
+k = 14        neighbors = 0
+k = 15        neighbors = 0
+k = 16        neighbors = 0
+k = 17        neighbors = 0
+k = 18        neighbors = 0
+k = 19        neighbors = 0
+k = 20        neighbors = 0
+
+cacuucaaccgaucgcggaa
+....................
+Ran in 0.979 seconds
+k = 0         neighbors = 0.9999845623970032
+k = 1         neighbors = 42.00218200683594
+k = 2         neighbors = 308.9296875
+k = 3         neighbors = 523.125
+k = 4         neighbors = -996.0
+k = 5         neighbors = 49792.0
+k = 6         neighbors = -1384448.0
+k = 7         neighbors = 11272192.0
+k = 8         neighbors = -332398592.0
+k = 9         neighbors = 2759852032.0
+k = 10        neighbors = -43822088192.0
+k = 11        neighbors = 244276264960.0
+k = 12        neighbors = -717259538432.0
+k = 13        neighbors = 7009386627072.0
+k = 14        neighbors = -15393162788864.0
+k = 15        neighbors = -22265110462464.0
+k = 16        neighbors = -117647744172032.0
+k = 17        neighbors = -56075093016576.0
+k = 18        neighbors = -207807697649664.0
+k = 19        neighbors = 156130651144192.0
+k = 20        neighbors = -51539607552000.0
+
+cacuucaaccgaucgcggaa
+....................
+Ran in 0.976 seconds
+k = 0         neighbors = 1.0
+k = 1         neighbors = 41.999996160157025
+k = 2         neighbors = 309.0000021699816
+k = 3         neighbors = 494.00004144385457
+k = 4         neighbors = 167.00000619329512
+k = 5         neighbors = 5.999957372434437
+k = 6         neighbors = 2.0641833543777466e-05
+k = 7         neighbors = -6.200047209858894e-06
+k = 8         neighbors = 1.0512303560972214e-07
+k = 9         neighbors = 1.177832018584013e-07
+k = 10        neighbors = -1.2201780918985605e-08
+k = 11        neighbors = 2.5535200620652176e-09
+k = 12        neighbors = 6.004086117172847e-11
+k = 13        neighbors = -4.702016553892463e-12
+k = 14        neighbors = -5.8475446707007e-13
+k = 15        neighbors = -8.743006318923108e-16
+k = 16        neighbors = -5.142370904098748e-16
+k = 17        neighbors = 4.4665741374613765e-17
+k = 18        neighbors = -3.2912523956749908e-19
+k = 19        neighbors = 7.970712382560975e-21
+k = 20        neighbors = -3.0673537324085515e-23

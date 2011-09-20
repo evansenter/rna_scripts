@@ -13,10 +13,10 @@ module Rnabor
 
     attr_reader :length, :sequence, :structure, :table
 
-    def initialize(sequence, structure)
+    def initialize(sequence, structure = nil)
       @length    = sequence.length
       @sequence  = (" " + sequence.downcase).freeze
-      @structure = (" " + structure).freeze
+      @structure = (" " + (structure || "." * length)).freeze
       @table     = generate_table
     end
 
@@ -44,7 +44,12 @@ module Rnabor
         end
       end
       
-      table.map { |delta_table| delta_table[1].last }
+      puts sequence.strip
+      puts structure.strip
+      
+      table.map { |delta_table| delta_table[1].last }.each_with_index do |neighbors, index|
+        puts "k = %-10.10sneighbors = %s" % [index, neighbors]
+      end
     end
     
     def pair_distance(i, k, j)
@@ -109,8 +114,7 @@ module Rnabor
   end
 end
 
-rna = Rnabor::Neighbors.new(
-  "ggggcccc", 
-  "(.(...))"
-)
-rna.count_neighbors
+# Rnabor::Neighbors.new("gggcc").count_neighbors
+# Rnabor::Neighbors.new("gggggccccc").count_neighbors
+# Rnabor::Neighbors.new("gggggcccccgggggccccc").count_neighbors
+# Rnabor::Neighbors.new("cacuucaaccgaucgcggaa").count_neighbors

@@ -1,5 +1,5 @@
 require "set"
-require "awesome_print"
+require "benchmark"
 require "../lagrange/lagrange.rb"
 
 module Rnabor
@@ -17,19 +17,29 @@ module Rnabor
 
     attr_reader :length, :sequence, :structure, :table
 
-    def initialize(sequence, structure)
+    def initialize(sequence, structure = nil)
       @length    = sequence.length
       @sequence  = (" " + sequence.downcase).freeze
-      @structure = (" " + structure).freeze
+      @structure = (" " + (structure || "." * length)).freeze
       @table     = generate_table
     end
     
-    def partition_function      
-      data = (0..length).map { |i| 1.0 / (i + 1) }.map do |x_value|
-        [x_value, solve_recurrences(x_value)]
-      end
+    def partition_function
+      runtime = Benchmark.measure {
+        @data = (0..length).map do |x_value|
+          [x_value, solve_recurrences(x_value)]
+        end
+      }.real
       
-      Lagrange.new(*data).coefficients
+      partition_values = Lagrange.new(*@data).coefficients
+      
+      puts sequence.strip
+      puts structure.strip
+      puts "Ran in %.3f seconds" % runtime
+      
+      (->(sum) { partition_values.map { |value| value / sum } })[partition_values.inject { |a, b| a + b }].each_with_index do |probability, index|
+        puts "k = %-10.10sZk/Z = %s%.20f" % [index, probability > 0 ? " " : "", probability]
+      end
     end
 
     def solve_recurrences(x_value)
@@ -109,15 +119,14 @@ module Rnabor
     def flush_table
       (1..length).each do |i|
         (i..length).each do |j|
-          table[i][j] = 1.0 if j <= i + MIN_LOOP_SIZE
+          table[i][j] = 1 if j <= i + MIN_LOOP_SIZE
         end
       end
     end
   end
 end
 
-rna = Rnabor::Nussinov.new(
-  "ggggcccc", 
-  "(.(...))"
-)
-rna.partition_function
+# Rnabor::Nussinov.new("gggcc").partition_function
+# Rnabor::Nussinov.new("gggggccccc").partition_function
+# Rnabor::Nussinov.new("gggggcccccgggggccccc").partition_function
+# Rnabor::Nussinov.new("cacuucaaccgaucgcggaa").partition_function
