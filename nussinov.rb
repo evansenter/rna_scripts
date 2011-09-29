@@ -15,13 +15,14 @@ module Rnabor
       "c" => %w[g]
     }
 
-    attr_reader :length, :sequence, :structure, :table
+    attr_reader :length, :sequence, :structure, :scaling_factor, :table
 
-    def initialize(sequence, structure = nil)
-      @length    = sequence.length
-      @sequence  = (" " + sequence.downcase).freeze
-      @structure = (" " + (structure || "." * length)).freeze
-      @table     = generate_table
+    def initialize(scaling_factor, sequence, structure = nil)
+      @scaling_factor = scaling_factor.to_f
+      @length         = sequence.length
+      @sequence       = (" " + sequence.downcase).freeze
+      @structure      = (" " + (structure || "." * length)).freeze
+      @table          = generate_table
     end
     
     def partition_function
@@ -37,8 +38,10 @@ module Rnabor
       puts structure.strip
       puts "Ran in %.3f seconds" % runtime
       
-      (->(sum) { partition_values.map { |value| value / sum } })[partition_values.inject { |a, b| a + b }].each_with_index do |probability, index|
-        puts "k = %-10.10sZk/Z = %s%.20f" % [index, probability > 0 ? " " : "", probability]
+      (->(sum) { partition_values.map { |value| value / sum } })[partition_values.inject { |a, b| a + b }].tap do |boltzmann_probabilities|
+        boltzmann_probabilities.each_with_index do |probability, index|
+          puts "k = %-10.10sZk/Z = %s%.20f" % [index, probability > 0 ? " " : "", probability]
+        end
       end
     end
 
@@ -55,9 +58,9 @@ module Rnabor
             base_pair_distance = pair_distance(i, k, j)
             
             if k == i
-              table[i][j] += table[k + 1][j - 1] * BASE_PAIR_ENERGY * x_value ** base_pair_distance
+              table[i][j] += table[k + 1][j - 1] * (BASE_PAIR_ENERGY / scaling_factor ** 2) * x_value ** base_pair_distance
             else
-              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * BASE_PAIR_ENERGY * x_value ** base_pair_distance
+              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * (BASE_PAIR_ENERGY / scaling_factor ** 2) * x_value ** base_pair_distance
             end
           end
         end
@@ -126,7 +129,7 @@ module Rnabor
   end
 end
 
-# Rnabor::Nussinov.new("gggcc").partition_function
-# Rnabor::Nussinov.new("gggggccccc").partition_function
-# Rnabor::Nussinov.new("gggggcccccgggggccccc").partition_function
-# Rnabor::Nussinov.new("cacuucaaccgaucgcggaa").partition_function
+# Rnabor::Nussinov.new(3.0, "gggcc").partition_function
+# Rnabor::Nussinov.new(3.0, "gggggccccc").partition_function
+# Rnabor::Nussinov.new(3.0, "gggggcccccgggggccccc").partition_function
+(rna = Rnabor::Nussinov.new(3.0, "cacuucaaccgaucgcggaa")).partition_function
