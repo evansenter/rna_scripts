@@ -27,10 +27,14 @@ module Rnabor
     
     def partition_function
       runtime = Benchmark.measure {
-        @data = (0..length).map do |x_value|
+        @scaled_solutions = (0..length).map do |x_value|
           [x_value, solve_recurrences(x_value)]
         end
       }.real
+      
+      # (->(sum) { partition_values.map { |x, y| y / sum } })[@scaled_solutions.map(&:last).inject { |a, b| a + b }]
+      
+      # Calculate probabilities at distance k before doing Lagrange to diffuse scaling.
       
       partition_values = Lagrange.new(*@data).coefficients
       
@@ -52,7 +56,7 @@ module Rnabor
         (1..(length - distance)).each do |i|
           j = i + distance
   
-          table[i][j] = table[i][j - 1] * x_value ** (end_base_paired?(i, j) ? 1 : 0)
+          table[i][j] = (table[i][j - 1] / scaling_factor) * x_value ** (end_base_paired?(i, j) ? 1 : 0)
           
           (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
             base_pair_distance = pair_distance(i, k, j)
