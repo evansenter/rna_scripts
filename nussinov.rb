@@ -136,4 +136,4 @@ end
 # Rnabor::Nussinov.new(3.0, "gggcc").partition_function
 # Rnabor::Nussinov.new(3.0, "gggggccccc").partition_function
 # Rnabor::Nussinov.new(3.0, "gggggcccccgggggccccc").partition_function
-(rna = Rnabor::Nussinov.new(3.0, "cacuucaaccgaucgcggaa")).partition_function
+# (rna = Rnabor::Nussinov.new(3.0, "cacuucaaccgaucgcggaa")).partition_function

@@ -1,9 +1,14 @@
-; (time (pair_distance "()))())()(().).)..)).(.()))))).)(.)(..())))))())()(.)).(..)..).()..)(.)..)))(.(()....(.(...)).()...).).(.()(.((.)..()..)))()).))..))(()((((.(()))(..((..((.()((())((.(.))(()(()(..()..((()().)(.)().(..(())))(..().((()..)().))(((((((().).(..).()).(((.()())())..(.(.(...).))..)(..))).(().()..(()()((..).).)..()..((..(.)).((.(().()((()(.).))).(().(.)..(()((...)((()(().())(())).).))..)...)((.(()(.()..)(..)(())...)..)((.((((()(((.()))((()(()(()((.(.()....()..(.))..).)((()(.)()()((...(.)(()(.).(...().).()))).))(.)()(..((.))))((..))((.()).)(.)((().()..).)((.())..).(.))((())()(...))().)())(.()(.((.((.).(..()(.(..(..((((.)()()...))).)().))(..(().()).)))(.....))())().()..)()).)(.()))((().).(()(.))())((((.())((((()))()()))...()(((((.()))(.)(((.)).(....)((()((.()(((())(.(()).(..))(()((()..(.(.()))..).().)..).)(()((.).()((.())((()()).).).(.))(.(..)(..))))).()(..(.)..(..(()...)).).().().(.).(((.((()(.)).(.)..(((..)).()....)((...(((.)(.)()..(()..(...))).(....(.)))((.())()))..)().()(.()((..(()().)(..)))()" 0 500 999))
-
 (ns nussinov
   (:use [clojure.set :only (union difference)]))
 
+(def pairings { \a [\u] \u [\a \g] \g [\c \u] \c [\g] })
 (def min_loop_size 3)
+
+(defn array? [x] (-> x class .isArray))
+(defn see [x] (if (array? x) (map see x) x))
+(defn inc_range [start stop] (range start (inc stop)))
+(defn symmetric_difference [set_1 set_2] (union (difference set_1 set_2) (difference set_2 set_1)))
+(defn pad_string [string] (if (= \space (first string)) string (str \space string)))
 
 (defn generate_table [n]
   (make-array Double/TYPE (inc n) (inc n)))
@@ -12,41 +17,65 @@
   (dotimes [i (count table)]
     (dotimes [j (count table)]
       (deep-aset doubles table i j (if (and (<= i j) (<= j (+ i min_loop_size)) (>= i 1)) 1 0)))))
-  
-;;  Use a list (stack) and a set after performance testing vs. Ruby version.
-  
-(defn match_pairs [rna_structure i j]
-  (let [padded_structure (if (= \space (first rna_structure)) rna_structure (cons \space rna_structure))]    
-    (reduce 
-      (fn [hash index]
-        (cond
-          (= \( (nth padded_structure index))
-            (assoc hash index nil)
-          (= \) (nth padded_structure index))
-            (assoc hash (-> (select-keys hash (map first (remove last hash))) keys sort reverse first) index)
-          :default
-            hash))
-      {} 
-      (range i (inc j)))))
-      
-(defn closed_pairs [pairs_hash]
-  (select-keys pairs_hash (map first (filter (partial every? identity) pairs_hash))))
 
-(defn pairs_set [rna_structure i j]
-  (if (or (< j i) (> i j)) 
-    #{} 
-    (-> (match_pairs rna_structure i j) closed_pairs set)))
+(defn solve_recurrences [rna_sequence rna_structure table x_value]
+  (let [length (dec (count table))]
+    (for [distance (inc_range (inc min_loop_size) (dec length)) i (inc_range 1 (- length distance))]
+      (let [j (+ i distance)]
+        (do
+          (deep-aset doubles table i j 
+            (* 
+              (deep-aget doubles table i (dec j)) 
+              (Math/pow x_value (if (end_paired rna_structure i j) 1 0))))
+          (for [k (range i (- j min_loop_size)) :when (can_pair rna_sequence k j)]
+            (let [base_pair_distance (pair_distance rna_structure i k j)]
+              (deep-aset doubles table i j
+                (+
+                  (deep-aget doubles table i j)
+                  (*
+                    (Math/pow x_value base_pair_distance)
+                    (if (= k i)
+                      (deep-aget doubles table (inc k) (dec j))
+                      (* 
+                        (deep-aget doubles table i (dec k)) 
+                        (deep-aget doubles table (inc k) (dec j))))))))))))))
+      
+(defn can_pair [rna_sequence i j]
+  (let [padded_sequence (.toLowerCase (pad_string rna_sequence))]
+    (some #{(nth padded_sequence j)} (pairings (nth padded_sequence i)))))
+    
+(defn end_paired [rna_structure i j]
+  (some #{j} (map last (match_pairs rna_structure i j))))
+
+(defn match_pairs_transient [rna_structure i j]
+  (let [padded_structure (pad_string rna_structure)]
+    (reduce 
+      (fn [hash_of_pairs index]
+        (do
+          (cond
+            (= \( (nth padded_structure index))
+              (conj! (hash_of_pairs :stack) index)
+            (= \) (nth padded_structure index))
+              (if (-> (hash_of_pairs :stack) count zero? not)
+                (do
+                  (conj! (hash_of_pairs :set_of_pairs) [(nth (hash_of_pairs :stack) (-> (hash_of_pairs :stack) count dec)) index])
+                  (pop! (hash_of_pairs :stack)))))
+          hash_of_pairs))
+      { :stack (transient []) :set_of_pairs (transient #{}) }
+      (inc_range i j))))
+      
+(defn match_pairs [rna_structure i j]
+  (if (> i j)
+    #{}
+    (-> (match_pairs_transient rna_structure i j) :set_of_pairs persistent!)))
       
 (defn pair_distance [rna_structure i k j]
   (let [
-    reference_structure (pairs_set rna_structure i j)
-    comparitive_pairings (union (pairs_set rna_structure i (dec k)) (pairs_set rna_structure (inc k) (dec j)) #{[k j]})
-    ] (count (union (difference reference_structure comparitive_pairings) (difference comparitive_pairings reference_structure)))))
+    reference_structure (match_pairs rna_structure i j)
+    comparitive_pairings (union (match_pairs rna_structure i (dec k)) (match_pairs rna_structure (inc k) (dec j)) #{[k j]})
+    ] (count (symmetric_difference reference_structure comparitive_pairings))))
     
 ; From http://clj-me.cgrand.net/2009/10/15/multidim-arrays/
-    
-(defn array? [x] (-> x class .isArray))
-(defn see [x] (if (array? x) (map see x) x))
     
 (defmacro deep-aget
   ([hint array idx]
