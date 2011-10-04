@@ -31,17 +31,19 @@
               (deep-aget doubles table i (dec j)) 
               (Math/pow x_value (if (end_paired rna_structure i j) 1 0))))
           (for [k (range i (- j min_loop_size)) :when (can_pair rna_sequence k j)]
-            (let [base_pair_distance (pair_distance rna_structure i k j)]
-              (deep-aset doubles table i j
-                (+
-                  (deep-aget doubles table i j)
-                  (*
-                    (Math/pow x_value base_pair_distance)
-                    (if (= k i)
-                      (deep-aget doubles table (inc k) (dec j))
-                      (* 
-                        (deep-aget doubles table i (dec k)) 
-                        (deep-aget doubles table (inc k) (dec j))))))))))))))
+            (partition_contribution rna_structure table x_value i k j)))))))
+                        
+(defn partition_contribution [rna_structure table x_value i k j]
+  (deep-aset doubles table i j
+    (+
+      (deep-aget doubles table i j)
+      (*
+        (Math/pow x_value (pair_distance rna_structure i k j))
+        (if (= k i)
+          (deep-aget doubles table (inc k) (dec j))
+          (* 
+            (deep-aget doubles table i (dec k)) 
+            (deep-aget doubles table (inc k) (dec j))))))))
       
 (defn can_pair [rna_sequence i j]
   (let [padded_sequence (.toLowerCase (pad_string rna_sequence))]
