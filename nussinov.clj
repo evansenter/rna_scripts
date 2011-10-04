@@ -1,8 +1,11 @@
 (ns nussinov
   (:use [clojure.set :only (union difference)]))
 
-(def pairings { \a [\u] \u [\a \g] \g [\c \u] \c [\g] })
+(def temperature (+ 37 273.15))
+(def boltzmann_constant 0.0019872370936902486) ; kcal / mol / K
+(def base_pair_energy (Math/pow Math/E (/ 1 (* boltzmann_constant temperature))))
 (def min_loop_size 3)
+(def pairings { \a [\u] \u [\a \g] \g [\c \u] \c [\g] })
 
 (defn array? [x] (-> x class .isArray))
 (defn see [x] (if (array? x) (map see x) x))
