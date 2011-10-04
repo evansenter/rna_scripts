@@ -108,22 +108,34 @@
             (deep-aget doubles table i (dec k)) 
             (deep-aget doubles table (inc k) (dec j))))))))
 
-(defn solve_recurrences 
-  ([rna_sequence rna_structure table x_value]
-    (let [length (dec (count table))]
-      (for [distance (inc_range (inc min_loop_size) (dec length)) i (inc_range 1 (- length distance))]
-        (let [j (+ i distance)]
-          (do
-            (deep-aset doubles table i j 
-              (* 
-                (deep-aget doubles table i (dec j)) 
-                (Math/pow x_value (if (end_paired rna_structure i j) 1 0))))
-            (for [k (range i (- j min_loop_size)) :when (can_pair rna_sequence k j)]
-              (partition_contribution rna_structure table x_value i k j))))))))
+(defn solve_recurrences [rna_sequence rna_structure table x_value]
+  (let [length (count rna_sequence)]
+    (for [distance (inc_range (inc min_loop_size) (dec length)) i (inc_range 1 (- length distance))]
+      (let [j (+ i distance)]
+        (do
+          (deep-aset doubles table i j 
+            (* 
+              (deep-aget doubles table i (dec j)) 
+              (Math/pow x_value (if (end_paired rna_structure i j) 1 0))))
+          (for [k (range i (- j min_loop_size)) :when (can_pair rna_sequence k j)]
+            (partition_contribution rna_structure table x_value i k j)))))))
+            
+(defn solve [rna_sequence rna_structure]
+  (let [length (count rna_sequence) table (generate_table length) results (transient [])]
+    (do
+      (doseq [i (inc_range 0 length)] (conj! 
+        results 
+        [i (do 
+          (solve_recurrences rna_sequence rna_structure (flush_table table) i)
+          (println i)
+          (println (deep-aget doubles sample_table 1 length)))]))
+      (persistent! results))))
+
+(solve sample_sequence sample_structure)
             
 (def sample_sequence  "gggggccccc")
 (def sample_structure "..........")
 (def sample_table (flush_table (generate_table (count sample_sequence))))
-(solve_recurrences sample_sequence sample_structure sample_table 1)
-            
-; (time (dotimes [_ 1000] (pair_distance ".(())(((())((.()..(.(.(.()().(.)()(.(.(.)((.().)..(((..)(.(.).(...(..(.()...)().)(().())).)..((.)..)((()).((.())).)().)(.).()).(.()))).).).((.().(.))(()()())(..)((.)).)(((((.(..()(.().(((().).)())().))))..(.)(.((())()()..)...)((..(.)).)).)((((..(()..(((.()..)()..).)())))(()))((.(.()()))((...(....)(().)((...(((.)()))..()))((...())).)))()().(.().()()(((..)....(((.()((..(.(..(.()().)).(..)))...)))..((...)(((()..((.)(.))....(.))((..)..(.((.)((()(((.)().)(.))(())..(.))()().(.())..)(..(...)(()(().)))..()..)))(()(().(((((()(()))(()))))...).)()(.)..))().())())()))(.)(.)(.((.(()(.(.(((().()...()()(.....(.((..)..)).).....))()()(.(.().(((((.()...).)...((.(((())()...))))(.()(()))))(..()))...().)(((.).))...(.)()()((.(.).(((.)).)(((..)..)((.()(.)())))...)))).)().(()))))((..)()((.(.().)(())).())))(())).)).((((()))).()()())))(.(.((..)...(.)))).))(..)..).()((.()(())()(((())(..).()(....).)(()()()))())(.)))....)()().).)))(.(..()...()((.)(.()()...(().()..)().(()).(.)..()().)).)()..(.(.)(.)).().)).).)))))." 1 500 1000)))
+(do (solve_recurrences sample_sequence sample_structure (flush_table sample_table) 1) (deep-aget doubles sample_table 1 10))
+
+(see sample_table)
