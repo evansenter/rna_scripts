@@ -6,7 +6,7 @@ module Rnabor
   class Nussinov
     TEMPERATURE        = 37
     BOLTZMANN_CONSTANT = 0.0019872370936902486 # kcal / mol / K
-    BASE_PAIR_ENERGY   = Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
+    BASE_PAIR_ENERGY   = 1 # Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
     MIN_LOOP_SIZE      = 3
     BASE_PAIRINGS      = {
       "a" => %w[u],
@@ -32,17 +32,19 @@ module Rnabor
         end
       }.real
       
-      # (->(sum) { partition_values.map { |x, y| y / sum } })[@scaled_solutions.map(&:last).inject { |a, b| a + b }]
+      p @scaled_solutions
+      
+      # (->(sum) { @scaled_solutions.map! { |x, y| [x, y / sum] } })[@scaled_solutions.map(&:last).inject { |a, b| a + b }]
       
       # Calculate probabilities at distance k before doing Lagrange to diffuse scaling.
       
-      partition_values = Lagrange.new(*@data).coefficients
+      partition_values = ::Lagrange.new(*@scaled_solutions).coefficients
       
       puts sequence.strip
       puts structure.strip
       puts "Ran in %.3f seconds" % runtime
       
-      (->(sum) { partition_values.map { |value| value / sum } })[partition_values.inject { |a, b| a + b }].tap do |boltzmann_probabilities|
+      partition_values.tap do |boltzmann_probabilities|
         boltzmann_probabilities.each_with_index do |probability, index|
           puts "k = %-10.10sZk/Z = %s%.20f" % [index, probability > 0 ? " " : "", probability]
         end
@@ -69,7 +71,7 @@ module Rnabor
           end
         end
       end
-      
+        
       table[1][length]
     end
     
@@ -133,7 +135,7 @@ module Rnabor
   end
 end
 
-# Rnabor::Nussinov.new(3.0, "gggcc").partition_function
-# Rnabor::Nussinov.new(3.0, "gggggccccc").partition_function
-# Rnabor::Nussinov.new(3.0, "gggggcccccgggggccccc").partition_function
-# (rna = Rnabor::Nussinov.new(3.0, "cacuucaaccgaucgcggaa")).partition_function
+# Rnabor::Nussinov.new(1.0, "gggcc").partition_function
+# Rnabor::Nussinov.new(1.0, "gggggccccc").partition_function
+# Rnabor::Nussinov.new(1.0, "gggggcccccgggggccccc").partition_function
+# (rna = Rnabor::Nussinov.new(1.0, "cacuucaaccgaucgcggaa")).partition_function
