@@ -120,22 +120,19 @@
           (for [k (range i (- j min_loop_size)) :when (can_pair rna_sequence k j)]
             (partition_contribution rna_structure table x_value i k j)))))))
             
-(defn solve [rna_sequence rna_structure]
-  (let [length (count rna_sequence) table (generate_table length) results (transient [])]
-    (do
-      (doseq [i (inc_range 0 length)] (conj! 
-        results 
-        [i (do 
-          (solve_recurrences rna_sequence rna_structure (flush_table table) i)
-          (println i)
-          (println (deep-aget doubles sample_table 1 length)))]))
-      (persistent! results))))
-
-(solve sample_sequence sample_structure)
+; (defn solve [rna_sequence rna_structure]
+;   (let [length (count rna_sequence) table (generate_table length) results (transient [])]
+;     (do
+;       (doseq [i (inc_range 0 length)] (conj! 
+;         results 
+;         [i (do 
+;           (solve_recurrences rna_sequence rna_structure (flush_table table) i)
+;           (println i)
+;           (println (deep-aget doubles sample_table 1 length)))]))
+;       (persistent! results))))
             
-(def sample_sequence  "gggggccccc")
-(def sample_structure "..........")
-(def sample_table (flush_table (generate_table (count sample_sequence))))
-(do (solve_recurrences sample_sequence sample_structure (flush_table sample_table) 1) (deep-aget doubles sample_table 1 10))
-
-(see sample_table)
+(def sample_sequence (reduce (fn [string _] (str string (rand-nth [\a \u \g \c]))) "" (range 100)))
+(def sample_structure (reduce (fn [string _] (str string (rand-nth [\.]))) "" (range 100)))
+(def sample_table (generate_table (count sample_sequence)))
+; (solve_recurrences sample_sequence sample_structure (flush_table sample_table) 1)
+; (deep-aget doubles sample_table 1 10)
