@@ -1,4 +1,6 @@
+require "awesome_print"
 require "set"
+require "complex"
 require "benchmark"
 require "../lagrange/lagrange.rb"
 
@@ -6,7 +8,7 @@ module Rnabor
   class Nussinov
     TEMPERATURE        = 37
     BOLTZMANN_CONSTANT = 0.0019872370936902486 # kcal / mol / K
-    BASE_PAIR_ENERGY   = 1 # Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
+    BASE_PAIR_ENERGY   = Math::E ** (1 / (BOLTZMANN_CONSTANT * (TEMPERATURE + 273.15)))
     MIN_LOOP_SIZE      = 3
     BASE_PAIRINGS      = {
       "a" => %w[u],
@@ -17,56 +19,48 @@ module Rnabor
 
     attr_reader :length, :sequence, :structure, :scaling_factor, :table
 
-    def initialize(scaling_factor, sequence, structure = nil)
-      @scaling_factor = scaling_factor.to_f
+    def initialize(sequence, structure = nil, scaling_factor = 1)
+      @scaling_factor = scaling_factor
       @length         = sequence.length
       @sequence       = (" " + sequence.downcase).freeze
       @structure      = (" " + (structure || "." * length)).freeze
       @table          = generate_table
     end
     
-    def partition_function
-      runtime = Benchmark.measure {
-        @scaled_solutions = (0..length).map do |x_value|
-          [x_value, solve_recurrences(x_value)]
-        end
-      }.real
-      
-      p @scaled_solutions
-      
-      # (->(sum) { @scaled_solutions.map! { |x, y| [x, y / sum] } })[@scaled_solutions.map(&:last).inject { |a, b| a + b }]
-      
-      # Calculate probabilities at distance k before doing Lagrange to diffuse scaling.
-      
-      partition_values = ::Lagrange.new(*@scaled_solutions).coefficients
-      
-      puts sequence.strip
-      puts structure.strip
-      puts "Ran in %.3f seconds" % runtime
-      
-      partition_values.tap do |boltzmann_probabilities|
-        boltzmann_probabilities.each_with_index do |probability, index|
-          puts "k = %-10.10sZk/Z = %s%.20f" % [index, probability > 0 ? " " : "", probability]
-        end
+    def structure_count(x_values)
+      @unscaled_solutions = x_values.map do |x_value|
+        [x_value, solve_recurrences(x_value, 1)]
       end
+      
+      Lagrange.new(*@unscaled_solutions).coefficients
+    end
+    
+    def partition_function(x_values)
+      @unscaled_solutions = x_values.map do |x_value|
+        [x_value, solve_recurrences(x_value, BASE_PAIR_ENERGY)]
+      end
+      
+      coefficients = Lagrange.new(*@unscaled_solutions).coefficients
+      
+      (->(sum) { coefficients.map { |boltzmann_factor| boltzmann_factor / sum } })[coefficients.inject { |a, b| a + b }]
     end
 
-    def solve_recurrences(x_value)
+    def solve_recurrences(x_value, energy)
       flush_table
       
       ((MIN_LOOP_SIZE + 1)..(length - 1)).each do |distance|
         (1..(length - distance)).each do |i|
           j = i + distance
   
-          table[i][j] = (table[i][j - 1] / scaling_factor) * x_value ** (end_base_paired?(i, j) ? 1 : 0)
+          table[i][j] = (table[i][j - 1] * (x_value ** (end_base_paired?(i, j) ? 1 : 0))) / scaling_factor
           
           (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
             base_pair_distance = pair_distance(i, k, j)
             
             if k == i
-              table[i][j] += table[k + 1][j - 1] * (BASE_PAIR_ENERGY / scaling_factor ** 2) * x_value ** base_pair_distance
+              table[i][j] += (table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / (scaling_factor ** 2)
             else
-              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * (BASE_PAIR_ENERGY / scaling_factor ** 2) * x_value ** base_pair_distance
+              table[i][j] += (table[i][k - 1] * table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / (scaling_factor ** 2)
             end
           end
         end
@@ -128,14 +122,19 @@ module Rnabor
     def flush_table
       (1..length).each do |i|
         (i..length).each do |j|
-          table[i][j] = 1 if j <= i + MIN_LOOP_SIZE
+          table[i][j] = (1.0 / (scaling_factor ** (j - i + 1))) if j <= i + MIN_LOOP_SIZE
         end
+      end
+    end
+    
+    def self.roots_of_unity(length, scaling = 1)
+      (0..length).map do |i|
+        Complex(scaling * Math.cos(2 * Math::PI * i / (length + 1)), scaling * Math.sin(2 * Math::PI * i / (length + 1)))
       end
     end
   end
 end
 
-# Rnabor::Nussinov.new(1.0, "gggcc").partition_function
-# Rnabor::Nussinov.new(1.0, "gggggccccc").partition_function
-# Rnabor::Nussinov.new(1.0, "gggggcccccgggggccccc").partition_function
-# (rna = Rnabor::Nussinov.new(1.0, "cacuucaaccgaucgcggaa")).partition_function
+ap (rna = Rnabor::Nussinov.new("gggggccccc", "." * 10)).structure_count(Rnabor::Nussinov.roots_of_unity(10))
+ap (rna = Rnabor::Nussinov.new("gggggccccc", "." * 10)).partition_function(Rnabor::Nussinov.roots_of_unity(10))
+ap (rna = Rnabor::Nussinov.new("gggggccccc", "." * 10, 3)).partition_function(Rnabor::Nussinov.roots_of_unity(10))
