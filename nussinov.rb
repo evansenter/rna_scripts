@@ -32,6 +32,8 @@ module Rnabor
         [x_value, solve_recurrences(x_value, 1)]
       end
       
+      puts
+      
       Lagrange.new(*@unscaled_solutions).coefficients
     end
     
@@ -40,12 +42,16 @@ module Rnabor
         [x_value, solve_recurrences(x_value, BASE_PAIR_ENERGY)]
       end
       
+      puts
+      
       coefficients = Lagrange.new(*@unscaled_solutions).coefficients
       
       (->(sum) { coefficients.map { |boltzmann_factor| boltzmann_factor / sum } })[coefficients.inject { |a, b| a + b }]
     end
 
     def solve_recurrences(x_value, energy)
+      print "."
+      
       flush_table
       
       ((MIN_LOOP_SIZE + 1)..(length - 1)).each do |distance|
@@ -136,5 +142,5 @@ module Rnabor
 end
 
 ap (rna = Rnabor::Nussinov.new("gggggccccc", "." * 10)).structure_count(Rnabor::Nussinov.roots_of_unity(10))
-ap (rna = Rnabor::Nussinov.new("gggggccccc", "." * 10)).partition_function(Rnabor::Nussinov.roots_of_unity(10))
-ap (rna = Rnabor::Nussinov.new("gggggccccc", "." * 10, 3)).partition_function(Rnabor::Nussinov.roots_of_unity(10))
+ap (rna = Rnabor::Nussinov.new("gggggccccc" * 3, "." * 30)).partition_function(Rnabor::Nussinov.roots_of_unity(30))
+ap (rna = Rnabor::Nussinov.new("gggggccccc" * 3, "." * 30, 3)).partition_function(Rnabor::Nussinov.roots_of_unity(30))
