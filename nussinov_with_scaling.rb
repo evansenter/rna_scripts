@@ -17,14 +17,15 @@ module Rnabor
       "c" => %w[g]
     }
 
-    attr_reader :length, :sequence, :structure, :table, :values
+    attr_reader :length, :sequence, :structure, :scaling_factor, :table, :values
 
     def initialize(options = {})
-      options         = { values: :roots_of_unity }.merge(options)
+      options         = { scaling_factor: 1, values: :roots_of_unity }.merge(options)
       @sequence       = (" " + options[:sequence].downcase).freeze
       @length         = sequence.length
       @structure      = (" " + (structure || "." * length)).freeze
       @values         = options[:values]
+      @scaling_factor = options[:scaling_factor]
       @table          = generate_table
     end
     
@@ -59,15 +60,15 @@ module Rnabor
         (1..(length - distance)).each do |i|
           j = i + distance
   
-          table[i][j] = table[i][j - 1] * (x_value ** (end_base_paired?(i, j) ? 1 : 0))
+          table[i][j] = (table[i][j - 1] * (x_value ** (end_base_paired?(i, j) ? 1 : 0))) / scaling_factor
           
           (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
             base_pair_distance = pair_distance(i, k, j)
             
             if k == i
-              table[i][j] += table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)
+              table[i][j] += (table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / (scaling_factor ** 2)
             else
-              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)
+              table[i][j] += (table[i][k - 1] * table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / (scaling_factor ** 2)
             end
           end
         end
@@ -135,7 +136,7 @@ module Rnabor
     def flush_table
       (1..length).each do |i|
         (i..length).each do |j|
-          table[i][j] = 1.0 if j <= i + MIN_LOOP_SIZE
+          table[i][j] = (1.0 / (scaling_factor ** (j - i + 1))) if j <= i + MIN_LOOP_SIZE
         end
       end
     end
