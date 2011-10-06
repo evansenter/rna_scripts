@@ -152,4 +152,4 @@ module Rnabor
   end
 end
 
-Benchmark.measure { (rna = Rnabor::Nussinov.new(sequence: ?g * 20 + ?c * 20)).partition_function }.real
+# Benchmark.measure { (rna = Rnabor::Nussinov.new(sequence: ?g * 20 + ?c * 20)).partition_function }.real
