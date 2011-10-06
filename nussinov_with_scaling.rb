@@ -21,8 +21,8 @@ module Rnabor
 
     def initialize(options = {})
       options         = { scaling_factor: 1, values: :roots_of_unity }.merge(options)
+      @length         = options[:sequence].length
       @sequence       = (" " + options[:sequence].downcase).freeze
-      @length         = sequence.length
       @structure      = (" " + (structure || "." * length)).freeze
       @values         = options[:values]
       @scaling_factor = options[:scaling_factor]

@@ -21,8 +21,8 @@ module Rnabor
 
     def initialize(options = {})
       options         = { values: :roots_of_unity }.merge(options)
+      @length         = options[:sequence].length
       @sequence       = (" " + options[:sequence].downcase).freeze
-      @length         = sequence.length
       @structure      = (" " + (structure || "." * length)).freeze
       @values         = options[:values]
       @table          = generate_table
@@ -152,4 +152,4 @@ module Rnabor
   end
 end
 
-# Benchmark.measure { (rna = Rnabor::Nussinov.new(sequence: ?g * 20 + ?c * 20)).partition_function }.real
+Benchmark.measure { (rna = Rnabor::Nussinov.new(sequence: ?g * 20 + ?c * 20)).partition_function }.real
