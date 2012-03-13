@@ -2,7 +2,7 @@ require "awesome_print"
 require "set"
 require "complex"
 require "benchmark"
-require "../lagrange/lagrange.rb"
+require "narray"
 
 module Rnabor
   class Nussinov
@@ -28,18 +28,22 @@ module Rnabor
       @table          = generate_table
     end
     
-    # def structure_count
-    #   @unscaled_solutions = generate_x_values.map do |x_value|
-    #     [x_value, solve_recurrences(x_value, 1)]
-    #   end
-    #   
-    #   puts
-    #   
-    #   Lagrange.new(*@unscaled_solutions).coefficients
-    # end
+    def structure_count
+      build_boltzmann_factor_table(1)
+      
+      @unscaled_solutions = generate_x_values.map do |x_value|
+        [x_value, solve_recurrences(x_value, 1)]
+      end
+      
+      puts
+      
+      matrix_a = NMatrix[*@unscaled_solutions.map(&:first).map { |x| (0..length).map { |power| x ** power } }]
+      vector_b = NVector[*@unscaled_solutions.map(&:last)]
+      (vector_b / matrix_a).to_a
+    end
     
     def partition_function
-      build_boltzmann_factor_table
+      build_boltzmann_factor_table(BASE_PAIR_ENERGY)
       
       @unscaled_solutions = generate_x_values.map do |x_value|
         [x_value, solve_recurrences(x_value, BASE_PAIR_ENERGY)]
@@ -47,12 +51,14 @@ module Rnabor
       
       puts
       
-      Lagrange.new(*@unscaled_solutions).coefficients
+      matrix_a = NMatrix[*@unscaled_solutions.map(&:first).map { |x| (0..length).map { |power| x ** power } }]
+      vector_b = NVector[*@unscaled_solutions.map(&:last)]
+      (vector_b / matrix_a).to_a
     end
     
-    def build_boltzmann_factor_table
+    def build_boltzmann_factor_table(energy)
       @boltzmann_factor_table = generate_table
-      solve_recurrences(1, BASE_PAIR_ENERGY)
+      solve_recurrences(1, energy)
       @boltzmann_factor_table, @table = table, boltzmann_factor_table
     end
 
@@ -65,15 +71,15 @@ module Rnabor
         (1..(length - distance)).each do |i|
           j = i + distance
   
-          table[i][j] = (table[i][j - 1] * boltzmann_factor_table[i][j - 1] / boltzmann_factor_table[i][j]) * (x_value ** (end_base_paired?(i, j) ? 1 : 0))
+          table[i][j] = (table[i][j - 1] * boltzmann_factor_table[i][j - 1] * (x_value ** (end_base_paired?(i, j) ? 1 : 0))) / boltzmann_factor_table[i][j]
           
           (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
             base_pair_distance = pair_distance(i, k, j)
             
             if k == i
-              table[i][j] += (table[k + 1][j - 1] * boltzmann_factor_table[k + 1][j - 1] / boltzmann_factor_table[i][j]) * energy * (x_value ** base_pair_distance)
+              table[i][j] += (table[k + 1][j - 1] * boltzmann_factor_table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / boltzmann_factor_table[i][j]
             else
-              table[i][j] += (table[i][k - 1] * boltzmann_factor_table[i][k - 1] / boltzmann_factor_table[i][j]) * (table[k + 1][j - 1] * boltzmann_factor_table[k + 1][j - 1] / boltzmann_factor_table[i][j]) * energy * (x_value ** base_pair_distance)
+              table[i][j] += (table[i][k - 1] * boltzmann_factor_table[i][k - 1] * table[k + 1][j - 1] * boltzmann_factor_table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / boltzmann_factor_table[i][j]
             end
           end
         end
@@ -150,9 +156,9 @@ module Rnabor
       values == :roots_of_unity ? self.class.roots_of_unity(length) : values
     end
     
-    def self.roots_of_unity(length, scaling = 1)
+    def self.roots_of_unity(length)
       (0..length).map do |i|
-        Complex(scaling * Math.cos(2 * Math::PI * i / (length + 1)), scaling * Math.sin(2 * Math::PI * i / (length + 1)))
+        Complex(Math.cos(2 * Math::PI * i / (length + 1)), Math.sin(2 * Math::PI * i / (length + 1)))
       end
     end
   end

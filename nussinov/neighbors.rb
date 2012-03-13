@@ -53,12 +53,16 @@ module Rnabor
     end
     
     def pair_distance(i, k, j)
-      reference_structure  = closed_pairs(match_pairs(structure[i..j])).map { |from, to| [from + i - 1, to + i - 1] }.to_set
-      upstream             = closed_pairs(match_pairs(k - 1 < i ? "" : structure[i..(k - 1)])).map { |from, to| [from + i - 1, to + i - 1] }
-      downstream           = closed_pairs(match_pairs(structure[(k + 1)..(j - 1)])).map { |from, to| [from + k, to + k] }
-      comparitive_pairings = (upstream + downstream + [[k, j]]).to_set
-      
-      ((reference_structure - comparitive_pairings) + (comparitive_pairings - reference_structure)).size
+      if (@memoized_pair_distance ||= {})[[i, k, j]]
+        @memoized_pair_distance[[i, k, j]]
+      else
+        reference_structure  = match_pairs(structure[i..j]).map { |from, to| [from + i - 1, to + i - 1] }.to_set
+        upstream             = match_pairs(k - 1 < i ? "" : structure[i..(k - 1)]).map { |from, to| [from + i - 1, to + i - 1] }
+        downstream           = match_pairs(structure[(k + 1)..(j - 1)]).map { |from, to| [from + k, to + k] }
+        comparitive_pairings = (upstream + downstream + [[k, j]]).to_set
+
+        @memoized_pair_distance[[i, k, j]] = ((reference_structure - comparitive_pairings) + (comparitive_pairings - reference_structure)).size
+      end
     end
 
     def match_pairs(structure_to_match = structure)
