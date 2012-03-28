@@ -29,24 +29,16 @@ module Rnabor
     end
     
     def structure_count
-      build_boltzmann_factor_table(1)
-      
-      @unscaled_solutions = generate_x_values.map do |x_value|
-        [x_value, solve_recurrences(x_value, 1)]
-      end
-      
-      puts
-      
-      matrix_a = NMatrix[*@unscaled_solutions.map(&:first).map { |x| (0..length).map { |power| x ** power } }]
-      vector_b = NVector[*@unscaled_solutions.map(&:last)]
-      (vector_b / matrix_a).to_a
+      solve_with_energy(1)
     end
     
     def partition_function
-      build_boltzmann_factor_table(BASE_PAIR_ENERGY)
-      
+      solve_with_energy(BASE_PAIR_ENERGY)
+    end
+    
+    def solve_with_energy(energy)
       @unscaled_solutions = generate_x_values.map do |x_value|
-        [x_value, solve_recurrences(x_value, BASE_PAIR_ENERGY)]
+        [x_value, solve_recurrences(x_value, energy)]
       end
       
       puts
@@ -54,12 +46,6 @@ module Rnabor
       matrix_a = NMatrix[*@unscaled_solutions.map(&:first).map { |x| (0..length).map { |power| x ** power } }]
       vector_b = NVector[*@unscaled_solutions.map(&:last)]
       (vector_b / matrix_a).to_a
-    end
-    
-    def build_boltzmann_factor_table(energy)
-      @boltzmann_factor_table = generate_table
-      solve_recurrences(1, energy)
-      @boltzmann_factor_table, @table = table, boltzmann_factor_table
     end
 
     def solve_recurrences(x_value, energy)
@@ -71,15 +57,15 @@ module Rnabor
         (1..(length - distance)).each do |i|
           j = i + distance
   
-          table[i][j] = (table[i][j - 1] * boltzmann_factor_table[i][j - 1] * (x_value ** (end_base_paired?(i, j) ? 1 : 0))) / boltzmann_factor_table[i][j]
+          table[i][j] = (table[i][j - 1] * (x_value ** end_base_paired?(i, j)))
           
           (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
-            base_pair_distance = pair_distance(i, k, j)
+            base_pair_distance = 
             
             if k == i
-              table[i][j] += (table[k + 1][j - 1] * boltzmann_factor_table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / boltzmann_factor_table[i][j]
+              table[i][j] += table[k + 1][j - 1] * energy * x_value ** (base_pairs_matrix[i][j] - base_pairs_matrix[k + 1][j - 1] + paired?(k, j))
             else
-              table[i][j] += (table[i][k - 1] * boltzmann_factor_table[i][k - 1] * table[k + 1][j - 1] * boltzmann_factor_table[k + 1][j - 1] * energy * (x_value ** base_pair_distance)) / boltzmann_factor_table[i][j]
+              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * energy * (x_value ** (base_pairs_matrix[i][j] - base_pairs_matrix[i][k - 1] - base_pairs_matrix[k + 1][j - 1] + paired?(k, j)))
             end
           end
         end
@@ -88,48 +74,53 @@ module Rnabor
       table[1][length]
     end
     
-    def pair_distance(i, k, j)
-      if (@memoized_pair_distance ||= {})[[i, k, j]]
-        @memoized_pair_distance[[i, k, j]]
+    def get_pairings(structure)
+      if instance_variable_defined?(:@base_pairings)
+        @base_pairings
       else
-        reference_structure  = match_pairs(structure[i..j]).map { |from, to| [from + i - 1, to + i - 1] }.to_set
-        upstream             = match_pairs(k - 1 < i ? "" : structure[i..(k - 1)]).map { |from, to| [from + i - 1, to + i - 1] }
-        downstream           = match_pairs(structure[(k + 1)..(j - 1)]).map { |from, to| [from + k, to + k] }
-        comparitive_pairings = (upstream + downstream + [[k, j]]).to_set
-
-        @memoized_pair_distance[[i, k, j]] = ((reference_structure - comparitive_pairings) + (comparitive_pairings - reference_structure)).size
-      end
-    end
-
-    def match_all_pairs
-      @memoized_match_all_pairs ||= get_pairings(structure)
-    end
-
-    def match_pairs(structure_to_match)
-      structure_to_match = " " + structure_to_match unless structure_to_match[0] == " "
+        stack = []
       
-      if structure_to_match.length >= MIN_LOOP_SIZE + 3 # Padded space + minimum loop size + base pair on either side of loop
-        get_pairings(structure_to_match)
-      else
-        {}
+        @base_pairings = structure.each_char.each_with_index.inject(Array.new(structure.length, -1)) do |array, (symbol, index)|
+          array.tap do      
+            case symbol
+            when "(" then stack.push(index)
+            when ")" then 
+              if stack.empty?
+                raise "Too many ')' in '#{structure}'"
+              else
+                stack.pop.tap do |opening|
+                  array[opening] = index
+                  array[index]   = opening
+                end
+              end
+            end
+          end
+        end.tap do
+          raise "Too many '(' in '#{structure}'" unless stack.empty?
+        end
       end
     end
     
-    def get_pairings(structure)
-      stack = []
-      
-      structure.each_char.each_with_index.inject({}) do |hash, (symbol, index)|
-        hash.tap do      
-          case symbol
-          when "(" then stack.push(index)
-          when ")" then hash[stack.pop] = index unless stack.empty?
+    def number_of_base_pairs(i, j)
+      base_pairings = get_pairings(structure)
+  
+      (i..j).inject(0) do |count, index|
+        count + (i < base_pairings[i] && j >= base_pairings[i] ? 1 : 0)
+      end
+    end
+
+    def base_pairs_matrix
+      @base_pairs_matrix ||= (0..length).map do |i|
+        (0..length).map do |j|
+          unless i.zero? || j.zero?
+            number_of_base_pairs(i, j)
           end
         end
       end
     end
     
     def end_base_paired?(i, j)
-      match_pairs(structure[i..j]).values.compact.include?(j - i + 1)
+      get_pairings(structure)[j] >= i ? 1 : 0
     end
 
     def can_pair?(i, j)
@@ -137,7 +128,7 @@ module Rnabor
     end
 
     def paired?(i, j)
-      match_all_pairs[i] == j
+      get_pairings(structure)[i] == j ? -1 : 1
     end
 
     def generate_table
@@ -164,4 +155,8 @@ module Rnabor
   end
 end
 
-# ap (rna = Rnabor::Nussinov.new(sequence: ?g * 5 + ?c * 5)).partition_function
+if ARGV.empty?
+  puts "Call: ruby ./nussinov_with_matricies.rb [SEQUENCE]"
+else
+  puts Rnabor::Nussinov.new(sequence: ARGV.first).structure_count
+end
