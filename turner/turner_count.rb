@@ -1,5 +1,5 @@
 module Rnabor
-  class ZukerCount
+  class TurnerCount
     MIN_LOOP_SIZE = 3
     MAX_LOOP_SIZE = 30 # Restrictions not in effect on multiloops
     BASE_PAIRINGS = {
@@ -140,7 +140,7 @@ module Rnabor
 end
 
 if ARGV.empty?
-  puts "Call: ruby ./zuker_count.rb [SEQUENCE]"
+  puts "Call: ruby ./turner_count.rb [SEQUENCE]"
 else
-  puts Rnabor::ZukerCount.new(ARGV.first).structure_count
+  puts Rnabor::TurnerCount.new(ARGV.first).structure_count
 end
