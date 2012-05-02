@@ -28,44 +28,49 @@ module Rnabor
       @table          = generate_table
     end
     
+    def scaled_structure_count(scaling = 2.0)
+      ap "I'm broking right now, pretty sure!"
+      
+      solve_with_energy(1, scaling) { |i, j| i > 0 && j >= i && j - i <= MIN_LOOP_SIZE ? (1.0 / (j - i + 1)) : nil }
+    end
+    
     def structure_count
-      solve_with_energy(1)
+      solve_with_energy(1) { |i, j| i > 0 && j >= i && j - i <= MIN_LOOP_SIZE ? 1 : nil }
     end
     
     def partition_function
-      solve_with_energy(BASE_PAIR_ENERGY)
+      solve_with_energy(BASE_PAIR_ENERGY) { |i, j| i > 0 && j >= i && j - i <= MIN_LOOP_SIZE ? 1 : nil }
     end
     
-    def solve_with_energy(energy)
+    def solve_with_energy(energy, scaling = 1.0, &block)
       @unscaled_solutions = generate_x_values.map do |x_value|
-        [x_value, solve_recurrences(x_value, energy)]
+        [x_value, solve_recurrences(x_value, energy, scaling, &block)]
       end
-      
-      puts
       
       matrix_a = NMatrix[*@unscaled_solutions.map(&:first).map { |x| (0..length).map { |power| x ** power } }]
       vector_b = NVector[*@unscaled_solutions.map(&:last)]
       (vector_b / matrix_a).to_a
     end
 
-    def solve_recurrences(x_value, energy)
+    def solve_recurrences(x_value, energy, scaling, &block)
       print "."
       
-      flush_table
+      flush_table(&block)
+      
+      ap table
+      ap scaling
       
       ((MIN_LOOP_SIZE + 1)..(length - 1)).each do |distance|
         (1..(length - distance)).each do |i|
           j = i + distance
   
-          table[i][j] = (table[i][j - 1] * (x_value ** end_base_paired?(i, j)))
+          table[i][j] = (table[i][j - 1] * (x_value ** end_base_paired?(i, j))) / scaling
           
           (i..(j - MIN_LOOP_SIZE - 1)).select { |k| can_pair?(k, j) }.each do |k|              
-            base_pair_distance = 
-            
             if k == i
-              table[i][j] += table[k + 1][j - 1] * energy * x_value ** (base_pairs_matrix[i][j] - base_pairs_matrix[k + 1][j - 1] + paired?(k, j))
+              table[i][j] += (table[k + 1][j - 1] * energy * x_value ** (base_pairs_matrix[i][j] - base_pairs_matrix[k + 1][j - 1] + paired?(k, j))) / (scaling ** 2)
             else
-              table[i][j] += table[i][k - 1] * table[k + 1][j - 1] * energy * (x_value ** (base_pairs_matrix[i][j] - base_pairs_matrix[i][k - 1] - base_pairs_matrix[k + 1][j - 1] + paired?(k, j)))
+              table[i][j] += (table[i][k - 1] * table[k + 1][j - 1] * energy * (x_value ** (base_pairs_matrix[i][j] - base_pairs_matrix[i][k - 1] - base_pairs_matrix[k + 1][j - 1] + paired?(k, j)))) / (scaling ** 2)
             end
           end
         end
@@ -74,7 +79,7 @@ module Rnabor
       table[1][length]
     end
     
-    def get_pairings(structure)
+    def get_pairings
       if instance_variable_defined?(:@base_pairings)
         @base_pairings
       else
@@ -102,7 +107,7 @@ module Rnabor
     end
     
     def number_of_base_pairs(i, j)
-      base_pairings = get_pairings(structure)
+      base_pairings = get_pairings
   
       (i..j).inject(0) do |count, index|
         count + (i < base_pairings[i] && j >= base_pairings[i] ? 1 : 0)
@@ -120,7 +125,7 @@ module Rnabor
     end
     
     def end_base_paired?(i, j)
-      get_pairings(structure)[j] >= i ? 1 : 0
+      get_pairings[j] >= i ? 1 : 0
     end
 
     def can_pair?(i, j)
@@ -128,17 +133,17 @@ module Rnabor
     end
 
     def paired?(i, j)
-      get_pairings(structure)[i] == j ? -1 : 1
+      get_pairings[i] == j ? -1 : 1
     end
 
     def generate_table
-      (0..length).map { Array.new(length + 1, 1.0) }
+      (0..length).map { Array.new(length + 1) }
     end
     
     def flush_table
-      (1..length).each do |i|
-        (i..length).each do |j|
-          table[i][j] = 1.0 if j <= i + MIN_LOOP_SIZE
+      (0..length).each do |i|
+        (0..length).each do |j|
+          table[i][j] = yield(i, j)
         end
       end
     end
@@ -158,5 +163,5 @@ end
 if ARGV.empty?
   puts "Call: ruby ./nussinov_with_matricies.rb [SEQUENCE]"
 else
-  puts Rnabor::Nussinov.new(sequence: ARGV.first).structure_count
+  ap Rnabor::Nussinov.new(sequence: ARGV.first).structure_count
 end
