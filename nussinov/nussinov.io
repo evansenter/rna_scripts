@@ -1,4 +1,4 @@
-# Nussinov to count the total number of structures in IO (http://iolanguage.com/)
+# Nussinov to count the total number of structures in Io (http://iolanguage.com/)
 # Object and Stack extensions for helpers
 Object do(
   memoize  := method(slotName, value, objectOr(getSlot(slotName), setSlot(slotName, value)))
