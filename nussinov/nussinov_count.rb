@@ -1,18 +1,20 @@
 module Rnabor
   class NussinovCount
     MIN_LOOP_SIZE = 3
-    BASE_PAIRINGS = {
-      "a" => %w[u],
-      "u" => %w[a g],
-      "g" => %w[c u],
-      "c" => %w[g]
+    INT_CODES     = {
+      "A" => 2,
+      "U" => 3,
+      "G" => 4,
+      "C" => 5
     }
+    
+    BASE_PAIRINGS = %w|au ua cg gc gu ug|.map(&:upcase).map { |bp| bp.split(//).map { |i| INT_CODES[i] } }.map(&:sort).uniq.map { |i, j| (2 ** i) * (3 ** j) }
 
     attr_reader :length, :sequence, :table
 
     def initialize(sequence)
       @length   = sequence.length
-      @sequence = " " + sequence.downcase
+      @sequence = [-1].concat(sequence.upcase.split(//).map { |i| INT_CODES[i] })
       @table    = (0..length).map { |i| (0..length).map { |j| i <= j ? 1 : 0 } }
     end
     
@@ -25,16 +27,11 @@ module Rnabor
         (1..(length - d)).each do |i|
           j = i + d
           
-          table[i][j] = table[i][j - 1]
+          table[i][j]  = table[i][j - 1]
+          table[i][j] += table[i + 1][j - 1] if can_pair?(i, j)
 
-          (i..(j - MIN_LOOP_SIZE - 1)).each do |k|
-            if can_pair?(k, j)
-              if k == i
-                table[i][j] += table[k + 1][j - 1]
-              else
-                table[i][j] += table[i][k - 1] * table[k + 1][j - 1]
-              end 
-            end
+          ((i + 1)..(j - MIN_LOOP_SIZE - 1)).each do |k|
+            table[i][j] += table[i][k - 1] * table[k + 1][j - 1] if can_pair?(k, j)
           end
         end
       end
@@ -43,7 +40,7 @@ module Rnabor
     end
 
     def can_pair?(i, j)
-      j > i + MIN_LOOP_SIZE && BASE_PAIRINGS[sequence[i]].include?(sequence[j])
+      sequence[i] ^ sequence[j] != 0x0 && BASE_PAIRINGS.include?(sequence[i] < sequence[j] ? (2 ** sequence[i]) * (3 ** sequence[j]) : (2 ** sequence[j]) * (3 ** sequence[i]))
     end
   end
 end
